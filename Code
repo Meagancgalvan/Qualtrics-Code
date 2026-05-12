@@ -147,6 +147,7 @@ Qualtrics.SurveyEngine.addOnReady(function() {
 Qualtrics.SurveyEngine.addOnload(function() {
     // Record the question name in a comma-separated list in Embedded Data
     // This helps track the order in which questions were seen
+    // change the string to whatever approprate name for your situation, in this case 1S stands for "set 1 safe"
     var qName = "1S";
     var order = Qualtrics.SurveyEngine.getEmbeddedData('QuestionOrder') || '';
     if(order.length > 0) order += ',';
