@@ -1,0 +1,171 @@
+Qualtrics.SurveyEngine.addOnload(function() {
+    /* Runs when the page first begins to load */
+});
+
+Qualtrics.SurveyEngine.addOnReady(function() {
+    //*** Change Page Layout***
+    // Get the main container for the current question
+    var container = this.getQuestionContainer();
+
+    // Select the table containing the answer choices
+    var questionBody = container.querySelector('.QuestionBody ul, .QuestionBody .ChoiceStructure');
+    
+    // Apply Flexbox to align choices in a horizontal row
+    if (questionBody) {
+        questionBody.style.setProperty('display', 'flex', 'important');
+        questionBody.style.setProperty('flex-direction', 'row', 'important');
+        questionBody.style.setProperty('justify-content', 'center', 'important');
+        questionBody.style.setProperty('flex-wrap', 'nowrap', 'important');
+        questionBody.style.setProperty('align-items', 'center', 'important');
+    }
+
+    // Loop through each individual choice to strip default styling (borders, shadows, etc.)
+    var choices = container.querySelectorAll('li, td.ChoiceStructure, label.SingleAnswer, label.MultipleAnswer');
+    for (var j = 0; j < choices.length; j++) {
+        choices[j].style.setProperty('background', 'transparent', 'important');
+        choices[j].style.setProperty('border', 'none', 'important');
+        choices[j].style.setProperty('box-shadow', 'none', 'important');
+        choices[j].style.setProperty('padding', '0 0px', 'important');
+        choices[j].style.setProperty('margin', '0', 'important');
+
+        // Check if the choice contains an image; if so, stack text below image
+        var hasImage = choices[j].querySelector('img');
+        if (hasImage) {
+            choices[j].style.setProperty('display', 'flex', 'important');
+            choices[j].style.setProperty('flex-direction', 'column', 'important');
+            choices[j].style.setProperty('align-items', 'center', 'important');
+            choices[j].style.setProperty('vertical-align', 'middle', 'important');
+    }
+
+    // Set uniform sizing for all images within the question
+    var images = container.querySelectorAll('img');
+    for (var i = 0; i < images.length; i++) {
+        images[i].style.setProperty('width', '290px', 'important');
+        images[i].style.setProperty('max-width', 'none', 'important');
+        images[i].style.setProperty('height', 'auto', 'important');
+        images[i].style.setProperty('margin-bottom', '10px', 'important');
+    }
+
+    // === Move "NO CLEAR CHOICE" to the bottom ===
+    // We use a small delay to ensure the DOM has fully rendered
+    setTimeout(function() {
+        var questionBodyEl = container.querySelector('.QuestionBody');
+        if (!questionBodyEl) return;
+
+        // Search for the specific table cell containing "No Clear Choice"
+        var allTds = questionBodyEl.querySelectorAll('td.LabelContainer, td.LabelContatiner');
+        var noChoiceTd = null;
+
+        for (var n = 0; n < allTds.length; n++) {
+            var text = allTds[n].innerText || allTds[n].textContent || '';
+            if (text.trim().toLowerCase().indexOf('no clear choice') !== -1) {
+                noChoiceTd = allTds[n];
+                break;
+            }
+        }
+
+        // Backup search: if not found in TD, look through all elements
+        if (!noChoiceTd) {
+            var allEls = questionBodyEl.querySelectorAll('*');
+            for (var x = 0; x < allEls.length; x++) {
+                var elText = allEls[x].innerText || allEls[x].textContent || '';
+                if (elText.trim().toLowerCase() === 'no clear choice') {
+                    var parent = allEls[x].parentNode;
+                    while (parent && parent.tagName !== 'TD' && parent !== questionBodyEl) {
+                        parent = parent.parentNode;
+                    }
+                    if (parent && parent.tagName === 'TD') {
+                        noChoiceTd = parent;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If the element is found, detach it and style it as a button at the bottom
+        if (noChoiceTd) {
+            var parentTr = noChoiceTd.parentNode;
+            var parentTable = parentTr ? parentTr.parentNode : null;
+            while (parentTable && parentTable.tagName !== 'TABLE') {
+                parentTable = parentTable.parentNode;
+            }
+
+            parentTr.removeChild(noChoiceTd); // Remove from original spot
+
+            // Create a new container to hold the "No Clear Choice" button
+            var noChoiceRow = document.createElement('div');
+            noChoiceRow.style.setProperty('display', 'flex', 'important');
+            noChoiceRow.style.setProperty('justify-content', 'center', 'important');
+            noChoiceRow.style.setProperty('width', '50%', 'important'); 
+            noChoiceRow.style.setProperty('margin', '18px auto 0', 'important'); 
+
+            // Function to apply specific styles to make it look like a distinct button
+            function forceNoChoiceStyles() {
+                noChoiceTd.style.setProperty('display', 'flex', 'important');
+                noChoiceTd.style.setProperty('justify-content', 'center', 'important');
+                noChoiceTd.style.setProperty('align-items', 'center', 'important');
+                noChoiceTd.style.setProperty('width', '100%', 'important');
+                noChoiceTd.style.setProperty('padding', '24px 0', 'important');
+                noChoiceTd.style.setProperty('border', '2px solid #cccccc', 'important');
+                noChoiceTd.style.setProperty('border-radius', '6px', 'important');
+                noChoiceTd.style.setProperty('background-color', '#566f8c', 'important');
+                noChoiceTd.style.setProperty('color', '#ffffff', 'important');
+                noChoiceTd.style.setProperty('cursor', 'pointer', 'important');
+
+                var noChoiceLabel = noChoiceTd.querySelector('label');
+                if (noChoiceLabel) {
+                    noChoiceLabel.style.setProperty('font-weight', 'bold', 'important');
+                    noChoiceLabel.style.setProperty('color', '#ffffff', 'important');
+                }
+            }
+
+            forceNoChoiceStyles();
+
+            // Use an observer to prevent Qualtrics' default CSS from overriding our custom styles
+            var observer = new MutationObserver(function() {
+                forceNoChoiceStyles();
+            });
+            observer.observe(noChoiceTd, { attributes: true, attributeFilter: ['style'] });
+
+            noChoiceRow.appendChild(noChoiceTd);
+
+            // Insert the new button row after the main choices table
+            if (parentTable && parentTable.parentNode) {
+                parentTable.parentNode.insertBefore(noChoiceRow, parentTable.nextSibling);
+            } else {
+                questionBodyEl.appendChild(noChoiceRow);
+            }
+        } else {
+            console.log('No clear choice TD not found');
+        }
+
+    }, 500);
+});
+
+
+//*** Data Tracking***
+Qualtrics.SurveyEngine.addOnload(function() {
+    // Record the question name in a comma-separated list in Embedded Data
+    // This helps track the order in which questions were seen
+    var qName = "1S";
+    var order = Qualtrics.SurveyEngine.getEmbeddedData('QuestionOrder') || '';
+    if(order.length > 0) order += ',';
+    order += qName;
+
+    Qualtrics.SurveyEngine.setEmbeddedData('QuestionOrder', order);
+});
+
+//*** Change Question Layout***
+Qualtrics.SurveyEngine.addOnReady(function() {
+    // Move the question text to the bottom of the container (below the choices)
+    var qContainer = this.getQuestionContainer();
+    var qText = qContainer.querySelector('.QuestionText');
+    var qChoices = qContainer.querySelector('.QuestionBody');
+    if (qText && qChoices) {
+        qContainer.appendChild(qText);
+    }
+});
+
+Qualtrics.SurveyEngine.addOnUnload(function() {
+    /* Runs when the user leaves the page */
+});
