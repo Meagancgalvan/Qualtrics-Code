@@ -1,0 +1,91 @@
+chart = {
+  const series = [
+    { name: "S1", data: [0, 4, 3, 7, 2, 4, 5, 8, 3, 2.8, 3.2, 3.5, 4, 3, 5, 8, 3, 5, 6, 7, 3.5, 5.5, 4, 2, 1, 0.5].map((y, x) => ({ x, y })) },
+    { name: "S2", data: [0, 3.5, 1, 1.2, 2, 3.5, 4.5, 0, 3.5, 2, 4.5, 1, 4, 5, 7, 6, 8, 9, 6, 7.5, 5, 7.5, 8.5, 4.5, 5, 5.5].map((y, x) => ({ x, y })) },
+    { name: "S3", data: [0, 2, 3, 2, 7, 1, 2, 3.5, 2.5, 4.5, 2.5, 3.5, 1.5, 2, 4, 2, 6, 8, 4, 2.5, 5.5, 2, 3, 1, 5, 6].map((y, x) => ({ x, y })) },
+    { name: "S4", data: [0, 1.5, 2.5, 3, 3, 3, 4, 3.5, 5, 6, 5, 6.5, 5.5, 4.5, 4, 5, 6, 4, 1.5, 8, 6.5, 7, 5.5, 6.5, 5.5, 7.5].map((y, x) => ({ x, y })) }
+  ];
+
+  const images = [
+     await FileAttachment("AS4.png").url(),
+    await FileAttachment("AX4.png").url(),
+    await FileAttachment("CS4.png").url(),
+    await FileAttachment("CX4.png").url()
+  ];
+
+  const width = 600;
+  const height = 300; 
+  const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+  const strokeHeight = 9; 
+  
+  // Adjust this until the dots/crosses look like their original size.
+  const patternBaseWidth = 80; 
+
+  const svg = d3.create("svg")
+    .attr("viewBox", [0, 0, width, height])
+    .attr("style", `max-width: 100%; height: auto; background: #ffffff;`);
+
+  const xScale = d3.scaleLinear().domain([0, 15]).range([margin.left, width - margin.right]);
+  const yScale = d3.scaleLinear().domain([0, 9]).range([height - margin.bottom, margin.top]);
+
+  // Grid
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(yScale).ticks(9).tickSize(-width + margin.left + margin.right).tickPadding(5))
+    .call(g => g.selectAll(".tick line").attr("stroke", "#f0f0f0"))
+    .call(g => g.select(".domain").remove());
+
+  svg.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(xScale).ticks(15).tickSize(-height + margin.top + margin.bottom).tickPadding(5))
+    .call(g => g.selectAll(".tick line").attr("stroke", "#f0f0f0"))
+    .call(g => g.select(".domain").remove());
+
+  series.forEach((s, i) => {
+    const plotData = s.data.filter(d => d.x <= 15);
+    
+    // Tracker: This keeps track of how much "string" has been pulled out
+    let traveledDistance = 0; 
+
+    for (let j = 0; j < plotData.length - 1; j++) {
+      const p1 = { x: xScale(plotData[j].x), y: yScale(plotData[j].y) };
+      const p2 = { x: xScale(plotData[j + 1].x), y: yScale(plotData[j + 1].y) };
+
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      const shouldFlip = Math.abs(angle) > 90;
+
+      const segment = svg.append("g")
+        .attr("transform", `translate(${p1.x},${p1.y}) rotate(${angle})`);
+
+      // Make it slightly longer to overlap joints
+      const clipId = `clip-${i}-${j}`;
+      svg.append("defs").append("clipPath")
+        .attr("id", clipId)
+        .append("rect")
+        .attr("x", -1) // Start 1px early
+        .attr("width", distance + 2) // End 1px late
+        .attr("height", strokeHeight)
+        .attr("y", -strokeHeight / 2);
+
+      // Shft the image left by the distance already traveled
+      // This makes the pattern continuous from segment to segment.
+      segment.append("image")
+        .attr("xlink:href", images[i])
+        .attr("x", -(traveledDistance % patternBaseWidth))
+        // Draw enough "pattern" to cover the distance
+        .attr("width", distance + patternBaseWidth) 
+        .attr("height", strokeHeight)
+        .attr("y", -strokeHeight / 2)
+        .attr("clip-path", `url(#${clipId})`)
+        .attr("transform", shouldFlip ? "scale(1, -1)" : null)
+        .attr("preserveAspectRatio", "none");
+
+      traveledDistance += distance;
+    }
+  });
+
+  return svg.node();
+}
